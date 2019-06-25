@@ -15,7 +15,7 @@
     domains:
       - 192.168.33.10.xip.io
       - www.192.168.33.10.xip.io
-    repo_url: git@github.com:ansiblebook/mezzanine_example.git
+    repo_url: https://github.com/futuoleng/mezzanine_example.git
     locale: en_US.UTF-8
     # Variables below don't appear in Mezannine's fabfile.py
     # but I've added them for convenience
@@ -111,7 +111,7 @@
     - name: set the supervisor config file
       template: src=templates/supervisor.conf.j2 dest=/etc/supervisor/conf.d/mezzanine.conf
       become: True
-      notify: restart supervisor
+      notify: restart supervisor group
     - name: install poll twitter cron job
       cron: name="poll twitter" minute="*/5" user={{ user }} job="{{ manage }} poll_twitter"
     - name: set the gunicorn config file
@@ -136,6 +136,8 @@
       with_items:
         - migrate
         - collectstatic
+      register: result
+    - debug: var=result
     - name: set the site id
       script: scripts/setsite.py
       environment:
@@ -152,6 +154,11 @@
         ADMIN_PASSWORD: "{{ admin_pass }}"
   handlers:
     - name: restart supervisor
+      listen: restart supervisor group
+      service: name=supervisor state=restarted
+      become: True
+    - name: restart gunicorn
+      listen: restart supervisor group
       supervisorctl: "name={{ gunicorn_procname }} state=restarted"
       become: True
     - name: restart nginx
